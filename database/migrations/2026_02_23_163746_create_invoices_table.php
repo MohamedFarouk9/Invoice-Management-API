@@ -27,12 +27,9 @@ return new class extends Migration
                 ->on('contracts')
                 ->onDelete('cascade');
 
-            $table->foreign('tenant_id')
-                ->references('id')
-                ->on('tenants')
-                ->onDelete('cascade');
-
-            $table->index(columns: ['tenant_id', 'status']);
+            // Removed: foreign key for tenant_id (logical multi-tenancy only)
+            // Just index it for fast queries
+            $table->index(['tenant_id', 'status']);
             $table->index(['contract_id', 'status']);
         });
     }

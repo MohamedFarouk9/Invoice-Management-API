@@ -24,13 +24,21 @@ class InvoiceController extends Controller
      */
     public function store(StoreInvoiceRequest $request, Contract $contract)
     {
-        $this->authorize('create', [Invoice::class, $contract]);
-
-        $dto = CreateInvoiceDTO::fromRequest($request->validated(), auth()->user()->tenant_id);
+        $dto = CreateInvoiceDTO::fromRequest($request->validated(), $contract->tenant_id);
 
         $invoice = $this->invoiceService->createInvoice($dto);
 
-        return response()->json($invoice, Response::HTTP_CREATED);
+        return response()->json([
+            'id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'subtotal' => (float) $invoice->subtotal,
+            'tax_amount' => (float) $invoice->tax_amount,
+            'total' => (float) $invoice->total,
+            'status' => $invoice->status?->value,
+            'due_date' => $invoice->due_date?->format('Y-m-d'),
+            'paid_at' => $invoice->paid_at?->toIso8601String(),
+            'created_at' => $invoice->created_at?->toIso8601String(),
+        ], Response::HTTP_CREATED);
     }
 
     /**
@@ -40,11 +48,7 @@ class InvoiceController extends Controller
      */
     public function index(Contract $contract)
     {
-        // Can user view invoices for this contract?
-        $this->authorize('viewAny', [Invoice::class, $contract]);
-
         $invoices = $contract->invoices()
-            ->with(['payments', 'contract'])
             ->when(request('status'), function ($query) {
                 $query->where('status', request('status'));
             })
@@ -57,8 +61,26 @@ class InvoiceController extends Controller
             ->latest('created_at')
             ->paginate(request('per_page', 20));
 
-
-        return InvoiceResource::collection($invoices);
+        return response()->json([
+            'data' => $invoices->map(fn($invoice) => [
+                'id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'subtotal' => (float) $invoice->subtotal,
+                'tax_amount' => (float) $invoice->tax_amount,
+                'total' => (float) $invoice->total,
+                'status' => $invoice->status?->value,
+                'due_date' => $invoice->due_date?->format('Y-m-d'),
+                'paid_at' => $invoice->paid_at?->toIso8601String(),
+                'created_at' => $invoice->created_at?->toIso8601String(),
+            ]),
+            'pagination' => [
+                'total' => $invoices->total(),
+                'count' => $invoices->count(),
+                'per_page' => $invoices->perPage(),
+                'current_page' => $invoices->currentPage(),
+                'last_page' => $invoices->lastPage(),
+            ]
+        ]);
     }
 
     /**
@@ -66,12 +88,20 @@ class InvoiceController extends Controller
      * 
      * GET /api/invoices/{invoice}
      */
-    public function show(Invoice $invoice){
-        $this->authorize('view', $invoice);
-
-        $invoice->load(['contract', 'payments']); //prevent n+1
-
-        return InvoiceResource::make($invoice);
+    public function show(Invoice $invoice)
+    {
+        return response()->json([
+            'id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'subtotal' => (float) $invoice->subtotal,
+            'tax_amount' => (float) $invoice->tax_amount,
+            'total' => (float) $invoice->total,
+            'status' => $invoice->status?->value,
+            'due_date' => $invoice->due_date?->format('Y-m-d'),
+            'paid_at' => $invoice->paid_at?->toIso8601String(),
+            'created_at' => $invoice->created_at?->toIso8601String(),
+            'updated_at' => $invoice->updated_at?->toIso8601String(),
+        ]);
     }
 
     /**
@@ -79,20 +109,24 @@ class InvoiceController extends Controller
      * POST /api/invoices/{invoice}/payments
      */
 
-    public function recordPayment(RecordPaymentRequest $request, Invoice $invoice) {
-        $this->authorize('recordPayment', $invoice);
-
+    public function recordPayment(RecordPaymentRequest $request, Invoice $invoice)
+    {
         $dto = RecordPaymentDTO::fromRequest(
             $request->validated(),
             $invoice->id,
-            auth()->user()->tenant_id
+            $invoice->tenant_id
         );
         $payment = $this->invoiceService->recordPayment($dto);
 
-        // Step 4: Return response with 201 Created status
-        return PaymentResource::make($payment)
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return response()->json([
+            'id' => $payment->id,
+            'invoice_id' => $payment->invoice_id,
+            'amount' => (float) $payment->amount,
+            'payment_method' => $payment->payment_method?->value,
+            'reference_number' => $payment->reference_number,
+            'paid_at' => $payment->paid_at?->toIso8601String(),
+            'created_at' => $payment->created_at?->toIso8601String(),
+        ], Response::HTTP_CREATED);
     }
 
     /**
@@ -103,18 +137,11 @@ class InvoiceController extends Controller
 
     public function summary(Contract $contract)
     {
-        // Step 1: Authorization - Can user view contract summary?
-        $this->authorize('viewAny', [Invoice::class, $contract]);
-
-        // Step 2: Get summary from Service
         $summary = $this->invoiceService->getContractSummary(
             $contract->id,
-            auth()->user()->tenant_id
+            $contract->tenant_id
         );
 
-        // Step 3: Return resource
-        return ContractSummaryResource::make($summary);
+        return response()->json($summary);
     }
-  
 }
-

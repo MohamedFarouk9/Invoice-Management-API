@@ -20,11 +20,6 @@ return new class extends Migration
             $table->string('status')->default(ContractStatus::DRAFT->value);
             $table->timestamps();
 
-            $table->foreign('tenant_id')
-                ->references('id')
-                ->on('tenants')
-                ->onDelete('cascade');
-
             $table->index(['tenant_id', 'status']);
         });
     }

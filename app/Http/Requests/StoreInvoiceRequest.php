@@ -9,8 +9,8 @@ class StoreInvoiceRequest extends FormRequest
 
     public function authorize(): bool
     {
-        // User must be authenticated
-        return $this->user() !== null;
+        // Allow public API access
+        return true;
     }
 
 

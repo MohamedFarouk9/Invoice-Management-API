@@ -6,13 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+
+            // ADD THIS LINE - The column must exist before foreign key!
+            $table->unsignedBigInteger('invoice_id');
+
             $table->decimal('amount', 10, 2);
             $table->string('payment_method');
             $table->string('reference_number')->nullable();
@@ -20,17 +21,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('invoice_id')
-            ->references('id')
-            ->on('invoices')
-            ->onDelete('cascade');
+                ->references('id')
+                ->on('invoices')
+                ->onDelete('cascade');
 
             $table->index('invoice_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('payments');

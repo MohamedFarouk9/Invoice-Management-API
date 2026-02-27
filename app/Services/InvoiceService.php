@@ -50,9 +50,9 @@ class InvoiceService
             }
 
             // VALIDATION: Contract is ACTIVE
-            if ($contract->status !== 'active') {
+            if ($contract->status->value !== 'active') {
                 throw new \Exception(
-                    'Cannot create invoice for ' . $contract->status . ' contract',
+                    'Cannot create invoice for ' . $contract->status->value . ' contract',
                     422
                 );
             }
