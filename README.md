@@ -1,53 +1,437 @@
-# Invoice Management API - Project Documentation
+# Invoice Management API
 
-## **Table of Contents**
-1. [Project Overview](#project-overview)
-2. [Architecture & Design](#architecture--design)
-3. [Database Schema](#database-schema)
-4. [Quick Start Guide](#quick-start-guide)
-5. [Implementation Batches](#implementation-batches)
-6. [API Endpoints](#api-endpoints)
-7. [Code Structure](#code-structure)
-8. [Key Technologies](#key-technologies)
+## Quick Setup & Testing Guide
+
+### Prerequisites
+- PHP 8.1+
+- Composer
+- MySQL 8.0+ (or MySQL server running)
+- Postman or any HTTP client
 
 ---
 
-## **Project Overview**
+## Installation & Setup
 
-### Purpose
-Build a professional-grade Invoice Management API for a real estate management platform. The system handles:
-- ✅ Invoice creation from rental contracts
-- ✅ Multi-tenant data isolation
-- ✅ Flexible tax calculation (VAT, Municipal Fee, extensible)
-- ✅ Payment tracking with automatic status transitions
-- ✅ Financial summaries and reporting
-
-### Core Features
-| Feature | Description |
-|---------|-------------|
-| **Multi-Tenancy** | Complete data isolation per tenant |
-| **Invoice Management** | Create, read, list, and track invoices |
-| **Payment Recording** | Record payments with automatic status updates |
-| **Tax Calculation** | Pluggable tax strategies (VAT, Municipal, etc.) |
-| **Authorization** | Policy-based access control per tenant |
-| **Type Safety** | PHP 8.1+ Backed Enums for all statuses |
-
-### Technology Stack
-- **Framework:** Laravel 11+
-- **Database:** MySQL 8.0+
-- **PHP Version:** 8.1+
-- **API Format:** JSON REST
-- **Testing:** PHPUnit + Pest
-- **Code Quality:** PHPStan, PHPCS
-
----
-
-## **Architecture & Design**
-
-### Layered Architecture Diagram
+### 1. Install Dependencies
+```bash
+composer install
 ```
-┌─────────────────────────────────────────────┐
-│         HTTP Request / Response             │
+
+### 2. Database Setup
+
+#### Option A: Fresh Setup (Recommended for Testing)
+```bash
+# Copy environment file and configure database
+cp .env.example .env
+
+# Update .env with your database credentials
+# DB_HOST=127.0.0.1
+# DB_DATABASE=invoice_management_api
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+# Generate app key
+php artisan key:generate
+
+# Run migrations with test data (3 tenants, 30+ invoices)
+php artisan migrate:fresh --seed
+```
+
+#### Option B: Migrations Only
+```bash
+php artisan migrate
+```
+
+### 3. Start the Development Server
+```bash
+php artisan serve
+```
+
+Server runs at: **http://localhost:8000**
+
+---
+
+## API Endpoints Overview
+
+All endpoints are accessible without authentication. Base URL: `http://localhost:8000/api`
+
+### 1. List All Invoices for a Contract
+```
+GET /api/contracts/{contract_id}/invoices?per_page=20&status=pending
+```
+
+**Example Request:**
+```bash
+GET http://localhost:8000/api/contracts/1/invoices
+```
+
+**Example Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "invoice_number": "INV-001-202602-0001",
+      "subtotal": 1000.00,
+      "tax_amount": 175.00,
+      "total": 1175.00,
+      "status": "pending",
+      "due_date": "2026-03-15",
+      "paid_at": null,
+      "created_at": "2026-02-27T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 5,
+    "count": 5,
+    "per_page": 20,
+    "current_page": 1,
+    "last_page": 1
+  }
+}
+```
+
+---
+
+### 2. Get a Single Invoice
+```
+GET /api/invoices/{invoice_id}
+```
+
+**Example Request:**
+```bash
+GET http://localhost:8000/api/invoices/1
+```
+
+**Example Response:**
+```json
+{
+  "id": 1,
+  "invoice_number": "INV-001-202602-0001",
+  "subtotal": 1000.00,
+  "tax_amount": 175.00,
+  "total": 1175.00,
+  "status": "pending",
+  "due_date": "2026-03-15",
+  "paid_at": null,
+  "created_at": "2026-02-27T10:30:00Z",
+  "updated_at": "2026-02-27T10:30:00Z"
+}
+```
+
+---
+
+### 3. Create an Invoice for a Contract
+```
+POST /api/contracts/{contract_id}/invoices
+Content-Type: application/json
+```
+
+**Example Request:**
+```bash
+POST http://localhost:8000/api/contracts/1/invoices
+Content-Type: application/json
+
+{
+  "contract_id": 1,
+  "due_date": "2026-04-30"
+}
+```
+
+**Example Response (201 Created):**
+```json
+{
+  "id": 10,
+  "invoice_number": "INV-001-202602-0010",
+  "subtotal": 1000.00,
+  "tax_amount": 175.00,
+  "total": 1175.00,
+  "status": "pending",
+  "due_date": "2026-04-30",
+  "paid_at": null,
+  "created_at": "2026-02-27T11:00:00Z"
+}
+```
+
+**Validation Rules:**
+- `contract_id`: Required, must exist in contracts table
+- `due_date`: Required, must be a date, must be in the future
+
+---
+
+### 4. Record a Payment on an Invoice
+```
+POST /api/invoices/{invoice_id}/payments
+Content-Type: application/json
+```
+
+**Example Request:**
+```bash
+POST http://localhost:8000/api/invoices/1/payments
+Content-Type: application/json
+
+{
+  "amount": 587.50,
+  "payment_method": "bank_transfer",
+  "reference_number": "TXN-12345"
+}
+```
+
+**Example Response (201 Created):**
+```json
+{
+  "id": 1,
+  "invoice_id": 1,
+  "amount": 587.50,
+  "payment_method": "bank_transfer",
+  "reference_number": "TXN-12345",
+  "paid_at": "2026-02-27T11:05:00Z",
+  "created_at": "2026-02-27T11:05:00Z"
+}
+```
+
+**Validation Rules:**
+- `amount`: Required, numeric, between 0.01 and 999999.99
+- `payment_method`: Required, one of: `cash`, `bank_transfer`, `credit_card`
+- `reference_number`: Optional, max 100 characters
+
+**Note:** Invoice status automatically updates based on payments:
+- If total paid < invoice total → `partially_paid`
+- If total paid = invoice total → `paid`
+
+---
+
+### 5. Get Contract Financial Summary
+```
+GET /api/contracts/{contract_id}/summary
+```
+
+**Example Request:**
+```bash
+GET http://localhost:8000/api/contracts/1/summary
+```
+
+**Example Response:**
+```json
+{
+  "total_invoiced": 5850.00,
+  "total_paid": 2940.00,
+  "outstanding_balance": 2910.00,
+  "invoices_count": 5,
+  "latest_invoice_date": "2026-02-27"
+}
+```
+
+---
+
+## Testing with Postman
+
+### 1. Create Postman Collection
+
+**File → New → HTTP Request**
+
+#### Request 1: List Invoices
+```
+Method: GET
+URL: http://localhost:8000/api/contracts/1/invoices
+Headers: 
+  - Accept: application/json
+```
+
+#### Request 2: Get Invoice
+```
+Method: GET
+URL: http://localhost:8000/api/invoices/1
+Headers:
+  - Accept: application/json
+```
+
+#### Request 3: Create Invoice
+```
+Method: POST
+URL: http://localhost:8000/api/contracts/1/invoices
+Headers:
+  - Content-Type: application/json
+  - Accept: application/json
+
+Body (JSON):
+{
+  "contract_id": 1,
+  "due_date": "2026-03-31"
+}
+```
+
+#### Request 4: Record Payment
+```
+Method: POST
+URL: http://localhost:8000/api/invoices/1/payments
+Headers:
+  - Content-Type: application/json
+  - Accept: application/json
+
+Body (JSON):
+{
+  "amount": 500.00,
+  "payment_method": "bank_transfer",
+  "reference_number": "TRANSFER-001"
+}
+```
+
+#### Request 5: Get Summary
+```
+Method: GET
+URL: http://localhost:8000/api/contracts/1/summary
+Headers:
+  - Accept: application/json
+```
+
+### 2. Testing Steps
+
+1. **Start server:** `php artisan serve`
+2. **Run migrations:** `php artisan migrate:fresh --seed` (creates 3 tenants with test data)
+3. **Open Postman** and test each endpoint above
+4. **Check responses** - All should return 200 (GET) or 201 (POST)
+
+---
+
+## Testing with cURL
+
+```bash
+# List invoices
+curl -X GET http://localhost:8000/api/contracts/1/invoices
+
+# Get single invoice
+curl -X GET http://localhost:8000/api/invoices/1
+
+# Create invoice
+curl -X POST http://localhost:8000/api/contracts/1/invoices \
+  -H "Content-Type: application/json" \
+  -d '{"contract_id":1,"due_date":"2026-03-31"}'
+
+# Record payment
+curl -X POST http://localhost:8000/api/invoices/1/payments \
+  -H "Content-Type: application/json" \
+  -d '{"amount":500,"payment_method":"bank_transfer","reference_number":"TXN-001"}'
+
+# Get summary
+curl -X GET http://localhost:8000/api/contracts/1/summary
+```
+
+---
+
+## Key Concepts
+
+### Invoice Numbering
+Invoices are auto-numbered: `INV-{TENANT_ID}-{YYYYMM}-{SEQUENCE}`
+- Example: `INV-001-202602-0042` (Tenant 1, Feb 2026, Invoice #42)
+
+### Tax Calculation
+Invoices include two taxes:
+- **VAT Tax:** 15% of contract rent amount
+- **Municipal Fee:** 2.5% of contract rent amount
+- **Total Tax:** 17.5%
+
+### Payment Status Tracking
+- `pending`: No payments received
+- `partially_paid`: Some payments received
+- `paid`: Full payment received
+- `overdue`: Due date passed (if not auto-updated)
+- `cancelled`: Invoice cancelled
+
+### Multi-Tenancy
+All data is isolated by `tenant_id`. Each tenant can only see their own contracts and invoices.
+
+---
+
+## Troubleshooting
+
+### 500 Error: "Contract not found"
+- Check that `contract_id` exists: `GET /api/contracts/1/invoices`
+- If missing, run: `php artisan migrate:fresh --seed`
+
+### 422 Error: "Cannot create invoice for inactive contract"
+- Contract must have status `active`
+- Check database: `SELECT * FROM contracts WHERE status='active'`
+
+### Validation Errors
+- Check request body is valid JSON
+- Verify all required fields are included
+- Check date format: `YYYY-MM-DD` and must be in future
+
+### Port Already in Use
+If port 8000 is in use:
+```bash
+php artisan serve --port=8001
+```
+
+---
+
+## File Structure
+
+```
+app/
+  ├── Models/              # Eloquent models (Contract, Invoice, Payment, User)
+  ├── Http/
+  │   ├── Controllers/     # API controllers
+  │   ├── Requests/        # Form request validation
+  │   └── Resources/       # Response transformation
+  ├── Services/            # Business logic (InvoiceService, TaxService)
+  ├── Repositories/        # Database abstraction layer
+  ├── Policies/            # Authorization logic
+  ├── Enums/               # Status enums
+  └── DTOs/                # Data Transfer Objects
+
+database/
+  ├── migrations/          # Database schema
+  ├── factories/           # Model factories for testing
+  └── seeders/             # Seed data
+
+routes/
+  └── api.php              # API route definitions
+```
+
+---
+
+## Technology Stack
+
+- **Laravel 11** - Modern PHP framework
+- **PHP 8.1+** - Latest PHP features (enums, readonly properties)
+- **MySQL 8.0+** - Database
+- **Laravel Sanctum** - API token authentication (optional)
+- **Eloquent ORM** - Query builder
+- **PHPUnit** - Testing framework
+
+---
+
+## What's Next?
+
+After testing the API:
+1. ✅ Test all 5 endpoints
+2. ✅ Create test invoices and payments
+3. ✅ Verify invoice status updates automatically
+4. ✅ Check financial summaries
+
+Consider implementing:
+- [ ] Unit tests for business logic
+- [ ] Feature tests for endpoints
+- [ ] API documentation (Swagger/OpenAPI)
+- [ ] Authentication & multi-tenancy enforcement
+- [ ] Advanced filtering & search
+- [ ] Invoice PDF generation
+
+---
+
+## Support & Documentation
+
+- **Laravel Docs:** https://laravel.com/docs
+- **MySQL Docs:** https://dev.mysql.com/doc/
+- **REST API Best Practices:** https://restfulapi.net/
+
+---
+
+**Version:** 1.0.0  
+**Last Updated:** February 27, 2026  
+**License:** MIT
 ├─────────────────────────────────────────────┤
 │  Form Request (Validation & Authorization)  │
 ├─────────────────────────────────────────────┤
