@@ -24,6 +24,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create default test user for quick access
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+            'tenant_id' => 1,
+        ]);
+        $this->command->info('✓ Created default test user (email: test@example.com)');
+
         // Seed 3 tenants with realistic data
         $this->seedTenant(1, 'Tenant Alpha');
         $this->seedTenant(2, 'Tenant Beta');

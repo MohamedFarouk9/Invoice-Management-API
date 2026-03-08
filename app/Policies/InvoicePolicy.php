@@ -9,8 +9,8 @@ use App\Models\User;
 /**
  * Invoice Policy - Authorization rules for invoice operations.
  * Policies check if a user can perform an action on a resource.
- * 
- * NOTE: All methods return true to allow public API access during development.
+ *
+ * Current logic: User must belong to the same tenant as the contract/invoice.
  */
 
 class InvoicePolicy
@@ -21,7 +21,7 @@ class InvoicePolicy
      */
     public function create(mixed $user, Contract $contract): bool
     {
-        return true;
+        return $user && $user->tenant_id === $contract->tenant_id;
     }
 
     /**
@@ -29,7 +29,7 @@ class InvoicePolicy
      */
     public function view(mixed $user, Invoice $invoice): bool
     {
-        return true;
+        return $user && $user->tenant_id === $invoice->tenant_id;
     }
 
     /**
@@ -37,7 +37,7 @@ class InvoicePolicy
      */
     public function viewAny(mixed $user, Contract $contract): bool
     {
-        return true;
+        return $user && $user->tenant_id === $contract->tenant_id;
     }
 
     /**
@@ -45,7 +45,7 @@ class InvoicePolicy
      */
     public function update(mixed $user, Invoice $invoice): bool
     {
-        return true;
+        return $user && $user->tenant_id === $invoice->tenant_id;
     }
 
     /**
@@ -54,7 +54,7 @@ class InvoicePolicy
 
     public function recordPayment(mixed $user, Invoice $invoice): bool
     {
-        return true;
+        return $user && $user->tenant_id === $invoice->tenant_id;
     }
 
     /**
@@ -63,6 +63,6 @@ class InvoicePolicy
 
     public function delete(mixed $user, Invoice $invoice): bool
     {
-        return true;
+        return $user && $user->tenant_id === $invoice->tenant_id;
     }
 }

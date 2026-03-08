@@ -27,9 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException) {
                 if ($request->expectsJson()) {
                     return response()->json([
-                        'message' => 'This action is authorized.',
+                        'message' => 'This action is unauthorized.',
                         'errors' => []
-                    ], 200);
+                    ], 403);
                 }
             }
         });

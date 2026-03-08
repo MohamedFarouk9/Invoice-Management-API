@@ -51,9 +51,89 @@ Server runs at: **http://localhost:8000**
 
 ---
 
+## Authentication (Laravel Sanctum)
+
+All API endpoints require **Bearer Token Authentication**. Follow these steps to test:
+
+### 1. Login to Get Token
+
+**Endpoint:** `POST http://localhost:8000/api/login`
+
+**Default Test User:**
+```
+Email: test@example.com
+Password: password
+Tenant ID: 1
+```
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password"
+  }'
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": 1,
+    "name": "Test User",
+    "email": "test@example.com",
+    "tenant_id": 1
+  },
+  "token": "1|abcdef1234567890xyz..."
+}
+```
+
+**⚠️ Important:** Copy the `token` value from the response. You'll use this in all subsequent API requests.
+
+### 2. Use Token in All Requests
+
+Add the `Authorization` header to every API request:
+
+```bash
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Example with curl:**
+```bash
+curl -X GET http://localhost:8000/api/invoices/1 \
+  -H "Authorization: Bearer 1|abcdef1234567890xyz..."
+```
+
+**Example in Postman:**
+- Open any request
+- Go to **Headers** tab
+- Add: `Authorization: Bearer 1|abcdef1234567890xyz...`
+
+### 3. Logout (Revoke Token)
+
+**Endpoint:** `POST http://localhost:8000/api/logout`
+
+```bash
+curl -X POST http://localhost:8000/api/logout \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+---
+
 ## API Endpoints Overview
 
-All endpoints are accessible without authentication. Base URL: `http://localhost:8000/api`
+**Base URL:** `http://localhost:8000/api`
+
+**All endpoints below require:**
+- Header: `Authorization: Bearer YOUR_TOKEN_HERE`
+- Header: `Content-Type: application/json`
+
+**Authorization Rules:**
+- Users can only access invoices/contracts from their own **tenant_id**
+- Attempting to access another tenant's data returns `403 Forbidden`
+
+---
 
 ### 1. List All Invoices for a Contract
 ```
@@ -62,7 +142,8 @@ GET /api/contracts/{contract_id}/invoices?per_page=20&status=pending
 
 **Example Request:**
 ```bash
-GET http://localhost:8000/api/contracts/1/invoices
+curl -X GET "http://localhost:8000/api/contracts/1/invoices?per_page=20" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
 **Example Response:**
@@ -100,7 +181,8 @@ GET /api/invoices/{invoice_id}
 
 **Example Request:**
 ```bash
-GET http://localhost:8000/api/invoices/1
+curl -X GET http://localhost:8000/api/invoices/1 \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
 **Example Response:**
@@ -124,18 +206,16 @@ GET http://localhost:8000/api/invoices/1
 ### 3. Create an Invoice for a Contract
 ```
 POST /api/contracts/{contract_id}/invoices
-Content-Type: application/json
 ```
 
 **Example Request:**
 ```bash
-POST http://localhost:8000/api/contracts/1/invoices
-Content-Type: application/json
-
-{
-  "contract_id": 1,
-  "due_date": "2026-04-30"
-}
+curl -X POST http://localhost:8000/api/contracts/1/invoices \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "due_date": "2026-04-30"
+  }'
 ```
 
 **Example Response (201 Created):**
@@ -162,19 +242,18 @@ Content-Type: application/json
 ### 4. Record a Payment on an Invoice
 ```
 POST /api/invoices/{invoice_id}/payments
-Content-Type: application/json
 ```
 
 **Example Request:**
 ```bash
-POST http://localhost:8000/api/invoices/1/payments
-Content-Type: application/json
-
-{
-  "amount": 587.50,
-  "payment_method": "bank_transfer",
-  "reference_number": "TXN-12345"
-}
+curl -X POST http://localhost:8000/api/invoices/1/payments \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 587.50,
+    "payment_method": "bank_transfer",
+    "reference_number": "TXN-12345"
+  }'
 ```
 
 **Example Response (201 Created):**
@@ -208,7 +287,8 @@ GET /api/contracts/{contract_id}/summary
 
 **Example Request:**
 ```bash
-GET http://localhost:8000/api/contracts/1/summary
+curl -X GET http://localhost:8000/api/contracts/1/summary \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
 **Example Response:**
@@ -226,15 +306,36 @@ GET http://localhost:8000/api/contracts/1/summary
 
 ## Testing with Postman
 
-### 1. Create Postman Collection
+### 1. Step 1: Get Authentication Token
 
-**File → New → HTTP Request**
+Before testing API endpoints, you must login and get a bearer token:
+
+**Request:**
+```
+Method: POST
+URL: http://localhost:8000/api/login
+Headers:
+  - Content-Type: application/json
+
+Body (JSON):
+{
+  "email": "test@example.com",
+  "password": "password"
+}
+```
+
+**Response:** Copy the `token` value from the response.
+
+### 2. Step 2: Create Requests with Token
+
+Add `Authorization: Bearer YOUR_TOKEN_HERE` header to all requests below:
 
 #### Request 1: List Invoices
 ```
 Method: GET
 URL: http://localhost:8000/api/contracts/1/invoices
 Headers: 
+  - Authorization: Bearer YOUR_TOKEN_HERE
   - Accept: application/json
 ```
 
@@ -243,6 +344,7 @@ Headers:
 Method: GET
 URL: http://localhost:8000/api/invoices/1
 Headers:
+  - Authorization: Bearer YOUR_TOKEN_HERE
   - Accept: application/json
 ```
 
@@ -251,12 +353,11 @@ Headers:
 Method: POST
 URL: http://localhost:8000/api/contracts/1/invoices
 Headers:
+  - Authorization: Bearer YOUR_TOKEN_HERE
   - Content-Type: application/json
-  - Accept: application/json
 
 Body (JSON):
 {
-  "contract_id": 1,
   "due_date": "2026-03-31"
 }
 ```
@@ -266,8 +367,8 @@ Body (JSON):
 Method: POST
 URL: http://localhost:8000/api/invoices/1/payments
 Headers:
+  - Authorization: Bearer YOUR_TOKEN_HERE
   - Content-Type: application/json
-  - Accept: application/json
 
 Body (JSON):
 {
@@ -282,39 +383,57 @@ Body (JSON):
 Method: GET
 URL: http://localhost:8000/api/contracts/1/summary
 Headers:
+  - Authorization: Bearer YOUR_TOKEN_HERE
   - Accept: application/json
 ```
 
-### 2. Testing Steps
+### 3. Testing Steps
 
 1. **Start server:** `php artisan serve`
-2. **Run migrations:** `php artisan migrate:fresh --seed` (creates 3 tenants with test data)
-3. **Open Postman** and test each endpoint above
-4. **Check responses** - All should return 200 (GET) or 201 (POST)
+2. **Run migrations:** `php artisan migrate:fresh --seed` (creates test user and test data)
+3. **Open Postman** and create a POST request to `/api/login` with test user credentials
+4. **Copy the token** from the response
+5. **Test each endpoint** above using that token in the Authorization header
+6. **Check responses** - All should return 200 (GET) or 201 (POST)
 
 ---
 
 ## Testing with cURL
 
 ```bash
-# List invoices
-curl -X GET http://localhost:8000/api/contracts/1/invoices
-
-# Get single invoice
-curl -X GET http://localhost:8000/api/invoices/1
-
-# Create invoice
-curl -X POST http://localhost:8000/api/contracts/1/invoices \
+# 1. Login and get token
+TOKEN=$(curl -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"contract_id":1,"due_date":"2026-03-31"}'
+  -d '{
+    "email": "test@example.com",
+    "password": "password"
+  }' | jq -r '.token')
 
-# Record payment
+echo "Token: $TOKEN"
+
+# 2. List invoices (replace $TOKEN with your actual token)
+curl -X GET http://localhost:8000/api/contracts/1/invoices \
+  -H "Authorization: Bearer $TOKEN"
+
+# 3. Get single invoice
+curl -X GET http://localhost:8000/api/invoices/1 \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Create invoice
+curl -X POST http://localhost:8000/api/contracts/1/invoices \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"due_date":"2026-03-31"}'
+
+# 5. Record payment
 curl -X POST http://localhost:8000/api/invoices/1/payments \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"amount":500,"payment_method":"bank_transfer","reference_number":"TXN-001"}'
 
-# Get summary
-curl -X GET http://localhost:8000/api/contracts/1/summary
+# 6. Get summary
+curl -X GET http://localhost:8000/api/contracts/1/summary \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---

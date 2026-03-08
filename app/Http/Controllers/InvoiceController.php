@@ -89,7 +89,7 @@ class InvoiceController extends Controller
 
     /**
      * Display the specified invoice with all details.
-     * 
+     *
      * GET /api/invoices/{invoice}
      */
     public function show(Invoice $invoice)
@@ -139,7 +139,7 @@ class InvoiceController extends Controller
 
     /**
      * Get financial summary for a contract.
-     * 
+     *
      * GET /api/contracts/{contract}/summary
      */
 
