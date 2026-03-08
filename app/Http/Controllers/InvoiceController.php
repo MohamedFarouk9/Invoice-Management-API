@@ -24,6 +24,8 @@ class InvoiceController extends Controller
      */
     public function store(StoreInvoiceRequest $request, Contract $contract)
     {
+        $this->authorize('create', $contract);
+
         $dto = CreateInvoiceDTO::fromRequest($request->validated(), $contract->tenant_id);
 
         $invoice = $this->invoiceService->createInvoice($dto);
@@ -48,6 +50,8 @@ class InvoiceController extends Controller
      */
     public function index(Contract $contract)
     {
+        $this->authorize('viewAny', $contract);
+
         $invoices = $contract->invoices()
             ->when(request('status'), function ($query) {
                 $query->where('status', request('status'));
@@ -90,6 +94,8 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
+        $this->authorize('view', $invoice);
+
         return response()->json([
             'id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
@@ -111,6 +117,8 @@ class InvoiceController extends Controller
 
     public function recordPayment(RecordPaymentRequest $request, Invoice $invoice)
     {
+        $this->authorize('recordPayment', $invoice);
+
         $dto = RecordPaymentDTO::fromRequest(
             $request->validated(),
             $invoice->id,
@@ -137,6 +145,8 @@ class InvoiceController extends Controller
 
     public function summary(Contract $contract)
     {
+        $this->authorize('viewAny', $contract);
+
         $summary = $this->invoiceService->getContractSummary(
             $contract->id,
             $contract->tenant_id

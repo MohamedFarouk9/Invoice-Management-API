@@ -19,7 +19,7 @@ class RecordPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => 'required|numeric|min:0.01|max:999999.99|decimal:0,2',
+            'amount' => 'required|numeric|min:0.01|max:999999.99',
             'payment_method' => 'required|in:cash,bank_transfer,credit_card',
             'reference_number' => 'nullable|string|max:100',
         ];

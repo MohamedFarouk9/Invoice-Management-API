@@ -116,12 +116,12 @@ class InvoiceService
             }
 
             // VALIDATION: Invoice can receive payments
-            if ($invoice->status === InvoiceStatus::CANCELLED->value) {
+            if ($invoice->status === InvoiceStatus::CANCELLED) {
                 throw new \Exception('Cannot pay cancelled invoice', 422);
             }
 
             // VALIDATION: Cannot pay already paid invoice
-            if ($invoice->status === InvoiceStatus::PAID->value) {
+            if ($invoice->status === InvoiceStatus::PAID) {
                 throw new \Exception('Invoice already paid', 422);
             }
 
@@ -227,5 +227,3 @@ class InvoiceService
         );
     }
 }
-
-
